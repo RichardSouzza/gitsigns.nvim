@@ -434,9 +434,11 @@ end
 --- Get version of file in the index, return array lines
 --- @param object string
 --- @param encoding? string
+--- @param filter_object? string
 --- @return string[] stdout, string? stderr
-function M:get_show_text(object, encoding)
-  local stdout, stderr = self:command({ 'show', object }, { text = false, ignore_error = true })
+function M:get_show_text(object, encoding, filter_object)
+  local cmd = filter_object and { 'cat-file', '--filters', filter_object } or { 'show', object }
+  local stdout, stderr = self:command(cmd, { text = false, ignore_error = true })
 
   if encoding and encoding ~= '' and encoding ~= 'utf-8' then
     -- Decode line endings with the text before splitting into UTF-8 lines.
@@ -448,6 +450,15 @@ function M:get_show_text(object, encoding)
 end
 
 --- @async
+--- Whether `relpath` has a `filter` gitattribute (git-crypt, git-lfs, ...).
+--- @param relpath string
+--- @return boolean
+function M:has_filter(relpath)
+  local v = self:check_attr('filter', { relpath })[relpath]
+  return v ~= nil and v ~= 'unspecified' and v ~= 'unset'
+end
+
+--- @async
 --- Get version of file at revision. If the path was renamed after `revision`,
 --- resolve the old path before reading the blob.
 --- @param revision string
@@ -455,7 +466,8 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function M:get_show_text_at_revision(revision, relpath, encoding)
-  local stdout, stderr = self:get_show_text(revision .. ':' .. relpath, encoding)
+  local obj = revision .. ':' .. relpath
+  local stdout, stderr = self:get_show_text(obj, encoding, self:has_filter(relpath) and obj or nil)
 
   if
     stderr

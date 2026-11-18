@@ -124,7 +124,11 @@ function Obj:get_show_text(revision, relpath)
     --- @cast relpath -?
     stdout, stderr = self.repo:get_show_text_at_revision(revision, relpath, self.encoding)
   else
-    stdout, stderr = self.repo:get_show_text(assert(self.object_name), self.encoding)
+    local filter_obj
+    if self.relpath and self.repo:has_filter(self.relpath) then
+      filter_obj = (self.revision or ':0') .. ':' .. self.relpath
+    end
+    stdout, stderr = self.repo:get_show_text(assert(self.object_name), self.encoding, filter_obj)
   end
 
   if not self.i_crlf and self.w_crlf then
